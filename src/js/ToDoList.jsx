@@ -1,13 +1,82 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 const ToDoList = () => {
   const [toDoItems, setToDoItems] = useState([]);
   const [newItem, setNewItem] = useState("");
+  const [user, setUser] = useState("Kain19");
 
-  const handleAddItem = () => {
+  const API_BASE_URL = 'https://playground.4geeks.com/todo';
+
+  useEffect(() => {
+    initailizeUser();
+  }, []);
+
+  const initailizeUser = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/users/${user}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setToDoItems(data.todos);
+      } else {
+        const response = await fetch(`${API_BASE_URL}/users/${user}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+        if (response.ok) {
+          setToDoItems([]);
+        }
+      }
+    } catch (error) {
+      console.error("Error initializing user:", error);
+    }
+  };
+
+  const handleAddItem = async () => {
     if (newItem) {
-      setToDoItems([...toDoItems, newItem]);
-      setNewItem("");
+      try {
+        const response = await fetch(`${API_BASE_URL}/todos/${user}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            label: newItem,
+            is_done: false,
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setToDoItems([...toDoItems, data]);
+          setNewItem("");
+        }
+      } catch (error) {
+        console.error("Error adding task:", error);
+      }
+    }
+  };
+
+  const deleteTask = async (id) => {
+    try {
+      const url = `${API_BASE_URL}/todos/${id}`;
+      const response = await fetch(url, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        const newList = toDoItems.filter((todo) => todo.id !== id);
+        setToDoItems(newList);
+      }
+    } catch (error) {
+      console.error("Error deleting task:", error);
     }
   };
 
@@ -17,17 +86,11 @@ const ToDoList = () => {
     }
   };
 
-  const handleDeleteItem = (index) => {
-    const newToDoItems = [...toDoItems];
-    newToDoItems.splice(index, 1);
-    setToDoItems(newToDoItems);
-  };
-
   return (
     <div className="container mt-4">
       <div className="row justify-content-center">
         <div className="col-md-8">
-          <h2 className="text-center mb-4"></h2>
+          <h2 className="text-center mb-4">To-Do List</h2>
           <div className="input-group mb-3">
             <input
               type="text"
@@ -53,10 +116,10 @@ const ToDoList = () => {
                 key={index}
                 className="list-group-item d-flex justify-content-between align-items-center"
               >
-                {item}
+                {item.label}
                 <button
                   className="btn btn-danger btn-sm mx-5"
-                  onClick={() => handleDeleteItem(index)}
+                  onClick={() => deleteTask(item.id)}
                 >
                   Delete
                 </button>
